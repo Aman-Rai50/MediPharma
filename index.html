@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>MediPharma | Operations Console</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+      /* ── SIDEBAR OVERLAY ── */
+      .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        z-index: 1100;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s;
+      }
+      .sidebar-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      /* ── SIDEBAR DRAWER ── */
+      .sidebar-drawer {
+        position: fixed;
+        top: 0; left: 0;
+        height: 100%;
+        width: 270px;
+        background: #0d1f2d;
+        color: #c8dde6;
+        z-index: 1200;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+        overflow-y: auto;
+      }
+      .sidebar-drawer.open {
+        transform: translateX(0);
+      }
+
+      /* Sidebar brand strip */
+      .sb-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 22px 20px 16px;
+        border-bottom: 1px solid #1e3344;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: .02em;
+      }
+      .sb-brand .mark {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        object-fit: contain;
+        background: #1e3344;
+      }
+
+      /* Sidebar close button */
+      .sb-close {
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: #7fa8bc;
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 2px 6px;
+        border-radius: 6px;
+        transition: background .15s, color .15s;
+      }
+      .sb-close:hover { background: #1e3344; color: #fff; }
+
+      /* Section label */
+      .sb-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        color: #4a7a90;
+        text-transform: uppercase;
+        padding: 18px 20px 6px;
+      }
+
+      /* Nav items */
+      .sb-nav {
+        display: flex;
+        flex-direction: column;
+        padding: 0 10px;
+        gap: 2px;
+      }
+      .sb-nav button {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: none;
+        border: none;
+        color: #b0cdd9;
+        font-size: 0.92rem;
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: left;
+        transition: background .15s, color .15s;
+        width: 100%;
+      }
+      .sb-nav button:hover,
+      .sb-nav button.on {
+        background: #1a3347;
+        color: #fff;
+      }
+      .sb-nav button.on {
+        font-weight: 600;
+      }
+      .sb-nav button svg {
+        flex-shrink: 0;
+        opacity: .75;
+      }
+
+      /* Divider */
+      .sb-divider {
+        height: 1px;
+        background: #1e3344;
+        margin: 10px 20px;
+      }
+
+      /* Auth buttons at bottom */
+      .sb-auth {
+        margin-top: auto;
+        padding: 16px 10px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-top: 1px solid #1e3344;
+      }
+      .sb-auth button {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: .9rem;
+        font-weight: 600;
+        transition: opacity .15s;
+      }
+      .sb-auth button:hover { opacity: .85; }
+      .sb-auth .btn-login {
+        background: #1a3347;
+        color: #7fc4d8;
+      }
+      .sb-auth .btn-register {
+        background: #1a7fa8;
+        color: #fff;
+      }
+
+      /* ── THREE-DOT TOGGLE BUTTON ── */
+      .sidebar-toggle {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1050;
+        background: #0d1f2d;
+        border: none;
+        color: #7fc4d8;
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+        transition: background .15s, color .15s;
+        flex-direction: column;
+        gap: 4px;
+        padding: 0;
+      }
+      .sidebar-toggle:hover { background: #1a3347; color: #fff; }
+      /* Three dots */
+      .sidebar-toggle .dot {
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- ══ THREE-DOT TOGGLE BUTTON ══ -->
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="openSidebar()" title="Open menu" aria-label="Open sidebar menu">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </button>
+
+    <!-- ══ SIDEBAR OVERLAY (dark background) ══ -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- ══ SIDEBAR DRAWER ══ -->
+    <div class="sidebar-drawer" id="sidebarDrawer" role="navigation" aria-label="Sidebar menu">
+
+      <!-- Brand -->
+      <div class="sb-brand">
+        <img class="mark" src="Logo.png" alt="MediPharma logo">
+        MediPharma
+        <button class="sb-close" onclick="closeSidebar()" aria-label="Close sidebar">×</button>
+      </div>
+
+      <!-- Main Navigation -->
+      <div class="sb-label">Main</div>
+      <nav class="sb-nav">
+        <button class="on" onclick="sbGo('dash')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button onclick="sbGo('reports')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Reports
+        </button>
+        <button onclick="sbGo('Notifications')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications
+        </button>
+      </nav>
+
+      <div class="sb-divider"></div>
+
+      <!-- Admin Section -->
+      <div class="sb-label">Admin</div>
+      <nav class="sb-nav">
+        <button onclick="sbGo('admin')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Admin Centre
+        </button>
+        <button onclick="sbGo('inventory')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Inventory
+        </button>
+        <button onclick="sbGo('purchase')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1"/><circle cx="19" cy="20" r="1"/><path d="M2 3h2l2.4 12.2a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6L22 8H5"/></svg>
+          Purchase
+        </button>
+        <button onclick="sbGo('sell')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Sell
+        </button>
+        <button onclick="sbGo('suppliers')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          Suppliers
+        </button>
+      </nav>
+
+      <div class="sb-divider"></div>
+
+      <!-- Patient Section -->
+      <div class="sb-label">Patient</div>
+      <nav class="sb-nav">
+        <button onclick="closeSidebar()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
+          Medicines
+        </button>
+        <button onclick="closeSidebar()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          Personal Care
+        </button>
+        <button onclick="closeSidebar()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Health Conditions
+        </button>
+        <button onclick="closeSidebar()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Vitamins & Supplements
+        </button>
+        <button onclick="closeSidebar()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          Diabetes Care
+        </button>
+        <button onclick="closeSidebar()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Healthcare Devices
+        </button>
+      </nav>
+
+      <!-- Auth Buttons -->
+      <div class="sb-auth">
+        <button class="btn-login" onclick="openAuth('login');closeSidebar()">Log in</button>
+        <button class="btn-register" onclick="openAuth('register');closeSidebar()">Register</button>
+      </div>
+    </div>
+
+    <!-- ══ ORIGINAL HEADER (kept for wallet/cart quick actions) ══ -->
+    <header class="top">
+      <div class="brand"><img class="mark" src="Logo.png" alt="MediPharma logo">MediPharma</div>
+      <nav class="menu sidebar-menu" aria-label="Main menu" style="display:none">
+        <button class="on" data-p="dash">Dashboard</button>
+        <button data-p="reports">Reports</button>
+        <button data-p="admin">Admin centre</button>
+        <button data-p="Notifications">Notifications</button>
+      </nav>
+      <nav class="menu sidebar-menu admin-menu" aria-label="Admin menu" style="display:none">
+        <strong>Admin</strong>
+        <button data-p="inventory">Inventory</button>
+        <button data-p="purchase">Purchase</button>
+        <button data-p="sell">Sell</button>
+        <button data-p="suppliers">Suppliers</button>
+      </nav>
+      <nav class="menu sidebar-menu patient-menu" aria-label="Patient menu" style="display:none">
+        <strong>Patient</strong>
+        <button type="button">Medicines</button>
+        <button type="button">Personal Care</button>
+        <button type="button">Health Conditions</button>
+        <button type="button">Vitamins &amp; Supplements</button>
+        <button type="button">Diabetes Care</button>
+        <button type="button">Healthcare Devices</button>
+      </nav>
+      <div class="sidebar-auth" style="display:none">
+        <button class="access" onclick="openAuth('login')">Log in</button>
+        <button class="access hot" onclick="openAuth('register')">Register</button>
+      </div>
+      <div class="quick-actions">
+        <div style="position:relative">
+          <button class="quick-action" type="button" aria-expanded="false" aria-controls="walletPanel" onclick="toggleQuickPanel('walletPanel',this)" title="Wallet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H20v15H5.5A2.5 2.5 0 0 1 3 17.5z"/><path d="M3 8h15a2 2 0 0 1 2 2v2h-4a2 2 0 0 0 0 4h4v4"/><path d="M16 14h.01"/></svg>
+            <span class="action-label">Wallet</span><span class="action-count" id="walletBalance">₹0</span>
+          </button>
+          <div class="quick-panel" id="walletPanel" hidden>
+            <h3>Wallet overview</h3>
+            <p>Available demo balance: <strong id="walletPanelBalance">₹0</strong></p>
+            <p>Track available funds for purchasing activity.</p>
+            <button class="quick-link" type="button" onclick="go('purchase');toggleQuickPanel('walletPanel',document.querySelector('[aria-controls=walletPanel]'))">View purchases →</button>
+            <button class="quick-link" type="button" onclick="toast('Wallet top-up is ready for backend integration.')">＋ Add funds</button>
+          </div>
+        </div>
+        <div style="position:relative">
+          <button class="quick-action" type="button" aria-expanded="false" aria-controls="cartPanel" onclick="toggleQuickPanel('cartPanel',this)" title="Shopping cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="19" cy="20" r="1"/><path d="M2 3h2l2.4 12.2a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6L22 8H5"/></svg>
+            <span class="action-label">Cart</span><span class="action-count" id="cartCount">0</span>
+          </button>
+          <div class="quick-panel" id="cartPanel" hidden>
+            <h3>Shopping cart</h3>
+            <p id="cartSummary">Your cart is empty.</p>
+            <p>Review items before recording a purchase.</p>
+            <button class="quick-link" type="button" onclick="go('purchase');toggleQuickPanel('cartPanel',document.querySelector('[aria-controls=cartPanel]'))">＋ Add purchase →</button>
+            <button class="quick-link" type="button" onclick="toast('Cart checkout is ready for backend integration.')">Review cart</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="dash" class="page on">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">MEDICINE MANAGEMENT CONSOLE</p>
+            <h1 class="title">The calm at the <em>centre</em> of care.</h1>
+            <p class="sub">Connected oversight of stock, suppliers, purchases and sales.</p>
+          </div>
+          <button class="btn blue" onclick="go('inventory')">Open inventory</button>
+        </div>
+        <div class="grid">
+          <div>
+            <article class="hero">
+              <p class="eyebrow">TODAY'S INVENTORY PULSE</p>
+              <h2>Every medicine, every <em>decision</em>, in one clear view.</h2>
+              <div class="stats">
+                <div><b id="units">0</b><span>units in stock</span></div>
+                <div><b id="records">0</b><span>medicine lines</span></div>
+                <div><b id="health">—</b><span>stock health</span></div>
+              </div>
+            </article>
+            <article class="card">
+              <div class="h"><b>Recent medicine records</b><button class="link" onclick="go('inventory')">VIEW INVENTORY →</button></div>
+              <div class="list" id="recent"></div>
+            </article>
+          </div>
+          <div>
+            <div class="metrics">
+              <article class="metric"><b id="value">₹0</b><small>Inventory value</small></article>
+              <article class="metric warn"><b id="low">0</b><small>Need replenishing</small></article>
+              <article class="metric good"><b id="safe">0%</b><small>Expiry secure</small></article>
+              <article class="metric"><b id="tx">0</b><small>Transactions</small></article>
+            </div>
+            <article class="card">
+              <div class="h"><b>Attention needed</b><button class="link" onclick="go('admin')">ADMIN CENTRE →</button></div>
+              <div id="alerts"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="inventory" class="page">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">INVENTORY MODULE</p>
+            <h1 class="title">Medicine <em>vault</em></h1>
+            <p class="sub">Find records quickly and monitor stock availability.</p>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="search">⌕ <input id="find" placeholder="Search medicine, batch, manufacturer or category"></div>
+          <select id="cat" class="filter"><option value="">All categories</option></select>
+          <select id="stock" class="filter">
+            <option value="">Any stock state</option>
+            <option value="low">Low stock</option>
+            <option value="healthy">Healthy stock</option>
+          </select>
+          <button class="btn blue" onclick="go('admin')">Manage catalogue</button>
+        </div>
+        <article class="card tablecard">
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Medicine</th><th>Category</th><th>Batch / expiry</th>
+                  <th>Price</th><th>Available</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="table"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section id="purchase" class="page">
+        <div>
+          <p class="eyebrow">PURCHASE MODULE</p>
+          <h1 class="title">Incoming <em>stock</em></h1>
+          <p class="sub">Receive medicines from suppliers and update inventory.</p>
+        </div>
+        <div class="cols">
+          <article class="card panel">
+            <h3>New purchase</h3>
+            <form id="purchaseform">
+              <div class="field"><label>Medicine</label><select id="pmed"></select></div>
+              <div class="field"><label>Quantity received</label><input id="pqty" type="number" min="1" value="1"></div>
+              <div class="field"><label>Supplier</label><input id="party" required placeholder="Supplier name"></div>
+              <button class="btn blue">Record purchase</button>
+            </form>
+          </article>
+          <article class="card panel">
+            <h3>Recent purchase records</h3>
+            <div id="purchases"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="sell" class="page">
+        <div>
+          <p class="eyebrow">SALES MODULE</p>
+          <h1 class="title">Outgoing <em>stock</em></h1>
+          <p class="sub">Record sales and keep stock figures accurate.</p>
+        </div>
+        <div class="cols">
+          <article class="card panel">
+            <h3>New sale</h3>
+            <form id="saleform">
+              <div class="field"><label>Medicine</label><select id="smed"></select></div>
+              <div class="field"><label>Quantity sold</label><input id="sqty" type="number" min="1" value="1"></div>
+              <div class="field"><label>Customer / invoice</label><input id="customer" required placeholder="Customer or invoice reference"></div>
+              <button class="btn dark">Record sale</button>
+            </form>
+          </article>
+          <article class="card panel">
+            <h3>Recent sales</h3>
+            <div id="sales"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="suppliers" class="page">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">SUPPLIER DIRECTORY</p>
+            <h1 class="title">Supply partners, <em>visible.</em></h1>
+            <p class="sub">Maintain the companies that support your stock flow.</p>
+          </div>
+          <button class="btn blue" onclick="toast('Supplier form ready for backend integration.')">＋ Add supplier</button>
+        </div>
+        <div class="admin-grid">
+          <article class="card admin-card">
+            <h3>Sun Pharma</h3>
+            <p>Primary antibiotic and chronic-care supplier.</p>
+            <div class="line"><span>Orders completed</span><b>18</b></div>
+            <div class="line"><span>Status</span><i class="status">ACTIVE</i></div>
+          </article>
+          <article class="card admin-card">
+            <h3>Cipla</h3>
+            <p>Analgesics, respiratory and general medicine supply.</p>
+            <div class="line"><span>Orders completed</span><b>24</b></div>
+            <div class="line"><span>Status</span><i class="status">ACTIVE</i></div>
+          </article>
+          <article class="card admin-card">
+            <h3>Alkem Labs</h3>
+            <p>Gastro and specialist product distribution.</p>
+            <div class="line"><span>Last delivery</span><b>2 days ago</b></div>
+            <div class="line"><span>Status</span><i class="status pending">REVIEW</i></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="reports" class="page">
+        <div>
+          <p class="eyebrow">REPORTING HUB</p>
+          <h1 class="title">Operations in <em>focus.</em></h1>
+          <p class="sub">Quick operational summaries for the current browser session.</p>
+        </div>
+        <div class="admin-grid">
+          <article class="card admin-card">
+            <h3>Inventory health</h3>
+            <p>See how much of the catalogue is above its reorder level.</p>
+            <div class="line"><span>Healthy stock</span><b id="reporthealth">—</b></div>
+            <div class="line"><span>Units on hand</span><b id="reportunits">—</b></div>
+          </article>
+          <article class="card admin-card">
+            <h3>Expiry watch</h3>
+            <p>Medicines that should be reviewed within the next 60 days.</p>
+            <div id="expiryreport"></div>
+          </article>
+          <article class="card admin-card">
+            <h3>Transaction ledger</h3>
+            <p>Snapshot of changes made through purchase and sales modules.</p>
+            <div class="line"><span>Purchases</span><b id="rpurchase">0</b></div>
+            <div class="line"><span>Sales</span><b id="rsale">0</b></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="admin" class="page">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">ADMIN CONTROL CENTRE</p>
+            <h1 class="title">Manage the <em>whole system.</em></h1>
+            <p class="sub">Users, catalogue rules, access, audit activity and system controls.</p>
+          </div>
+          <button class="btn blue" onclick="toast('Inventory data exported as a demo action.')">Export data</button>
+        </div>
+        <div class="admin-grid">
+          <article class="card admin-card">
+            <h3>User &amp; role management</h3>
+            <p>Control which workspace each team member can access.</p>
+            <div class="line"><span>Dr. Aman Rai</span><i class="status">ADMIN</i></div>
+            <div class="line"><span>Inventory officer</span><i class="status">INVENTORY</i></div>
+            <div class="formline"><input placeholder="Invite email"><button class="btn soft" onclick="toast('Invite prepared.')">Invite</button></div>
+          </article>
+          <article class="card admin-card">
+            <h3>Medicine catalogue</h3>
+            <p>Protect consistent categories and medicine metadata.</p>
+            <div class="line"><span>Active medicine lines</span><b id="adminmeds">0</b></div>
+            <div class="line"><span>Categories</span><b id="admincats">0</b></div>
+            <div class="formline">
+              <input placeholder="New category">
+              <button class="btn soft" onclick="toast('Category added to review queue.')">Add</button>
+            </div>
+          </article>
+          <article class="card admin-card">
+            <h3>Reorder &amp; expiry rules</h3>
+            <p>Set the safety thresholds used across reports.</p>
+            <div class="line"><span>Low-stock records</span><b id="adminlow">0</b></div>
+            <div class="line"><span>Expiry watch window</span><b>60 days</b></div>
+            <button class="btn soft" onclick="toast('Safety thresholds saved.')">Configure rules</button>
+          </article>
+          <article class="card admin-card">
+            <h3>Audit activity</h3>
+            <p>Track changes made to this local project workspace.</p>
+            <div id="audit"></div>
+            <button class="btn soft" style="margin-top:12px" onclick="toast('Audit log exported.')">Export activity</button>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="auth" class="auth">
+      <div class="modal">
+        <div class="modal-top">
+          <div>
+            <p class="eyebrow">ACCOUNT ACCESS</p>
+            <h2 id="authTitle" style="margin:0;font:600 25px 'Playfair Display'">Welcome back</h2>
+          </div>
+          <button class="close" onclick="closeAuth()">×</button>
+        </div>
+        <div class="tabs">
+          <button id="loginTab" onclick="authTab('login')">Log in</button>
+          <button id="registerTab" onclick="authTab('register')">Register</button>
+        </div>
+        <form id="loginForm" class="authform">
+          <div class="field"><label>Email</label><input type="email" required placeholder="you@medipharma.com"></div>
+          <div class="field"><label>Password</label><input type="password" required placeholder="••••••••"></div>
+          <button class="btn blue">Log in to console</button>
+        </form>
+        <form id="registerForm" class="authform">
+          <div class="field"><label>Full name</label><input required placeholder="Your name"></div>
+          <div class="field"><label>Email</label><input type="email" required placeholder="you@medipharma.com"></div>
+          <label style="font:700 10px 'DM Mono';color:#60747b">WORKSPACE ROLE</label>
+          <div class="roles">
+            <button type="button" class="role on">Admin</button>
+            <button type="button" class="role">Inventory</button>
+            <button type="button" class="role">Purchase</button>
+            <button type="button" class="role">Sales</button>
+          </div>
+          <div class="field"><label>Password</label><input type="password" required placeholder="Minimum 8 characters"></div>
+          <button class="btn blue">Create workspace</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+      document.body.classList.add('sidebar-layout');
+
+      /* ── Sidebar open / close ── */
+      function openSidebar() {
+        document.getElementById('sidebarDrawer').classList.add('open');
+        document.getElementById('sidebarOverlay').classList.add('open');
+        document.getElementById('sidebarToggle').style.display = 'none';
+      }
+      function closeSidebar() {
+        document.getElementById('sidebarDrawer').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('open');
+        document.getElementById('sidebarToggle').style.display = 'flex';
+      }
+
+      /* Navigate from sidebar and close it */
+      function sbGo(page) {
+        go(page);
+        closeSidebar();
+        /* highlight active button in sidebar */
+        document.querySelectorAll('.sb-nav button').forEach(btn => btn.classList.remove('on'));
+        document.querySelectorAll('.sb-nav button').forEach(btn => {
+          if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'" + page + "'")) {
+            btn.classList.add('on');
+          }
+        });
+      }
+
+      /* ── Quick Panels ── */
+      function toggleQuickPanel(id, button) {
+        const panel = document.getElementById(id), opening = panel.hidden;
+        document.querySelectorAll('.quick-panel').forEach(item => item.hidden = true);
+        document.querySelectorAll('.quick-action[aria-expanded]').forEach(item => item.setAttribute('aria-expanded', 'false'));
+        panel.hidden = !opening;
+        button.setAttribute('aria-expanded', String(opening));
+      }
+      document.addEventListener('click', event => {
+        if (!event.target.closest('.quick-actions')) {
+          document.querySelectorAll('.quick-panel').forEach(panel => panel.hidden = true);
+          document.querySelectorAll('.quick-action[aria-expanded]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+        }
+      });
+
+      /* Close sidebar on Escape key */
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeSidebar();
+      });
+    </script>
+    <script src="script.js"></script>
+  </body>
+</html>
